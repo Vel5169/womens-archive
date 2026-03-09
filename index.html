@@ -205,9 +205,10 @@
             padding: 8px 18px; border-radius: 4px; font-weight: 700;
             cursor: pointer; font-size: 11px; letter-spacing: 1px;
             text-transform: uppercase; transition: 0.25s;
-            font-family: 'DM Sans', sans-serif;
+            font-family: 'DM Sans', sans-serif; min-width: 100px;
         }
         .copy-btn:hover { background: var(--vibrant-purple); }
+        .copy-btn.copied { background: #3a7a3a; }
         .read-more-btn {
             display: inline-flex; align-items: center; gap: 6px;
             background: transparent; color: var(--matte-purple);
@@ -216,9 +217,22 @@
             cursor: pointer; font-size: 11px; letter-spacing: 1px;
             text-transform: uppercase; transition: 0.25s;
             font-family: 'DM Sans', sans-serif; text-decoration: none;
+            position: relative;
         }
         .read-more-btn:hover { background: var(--matte-purple); color: white; }
         .read-more-btn svg { flex-shrink: 0; }
+        .read-more-btn::after {
+            content: 'Opens full Wikipedia article in a new tab';
+            position: absolute; bottom: calc(100% + 8px); left: 50%;
+            transform: translateX(-50%);
+            background: #1e1650; color: white;
+            font-size: 10px; font-weight: 500;
+            padding: 6px 10px; border-radius: 4px;
+            white-space: nowrap; opacity: 0; pointer-events: none;
+            transition: opacity 0.2s ease;
+            letter-spacing: 0.3px; text-transform: none;
+        }
+        .read-more-btn:hover::after { opacity: 1; }
 
         .impact-footer {
             background: var(--warm); padding: 16px 36px;
@@ -256,6 +270,21 @@
             .grid { grid-template-columns: 1fr; }
             .grid-container { padding: 0 20px 60px; }
             header { padding: 80px 24px 70px; }
+        }
+        footer {
+            text-align: center;
+            padding: 28px 20px 40px;
+            background: var(--matte-purple);
+        }
+        .footer-attr {
+            font-size: 12px; color: rgba(255,255,255,0.4);
+            line-height: 1.6;
+        }
+        .footer-attr a { color: var(--gold); text-decoration: none; }
+        .footer-attr a:hover { text-decoration: underline; }
+        .footer-made {
+            font-size: 12px; color: rgba(255,255,255,0.25);
+            margin-top: 6px; letter-spacing: 0.5px;
         }
     </style>
 </head>
@@ -424,11 +453,11 @@ LIMIT 30`.trim();
                     <img src="${imgSrc}" class="portrait" alt="${name}" loading="lazy">
                 </div>
                 <div class="card-body">
-                    <span class="category-label">✦ Archive Search Result</span>
+                    <span class="category-label">Archive Search Result</span>
                     <h2 class="name">${name}</h2>
                     <p class="bio">${bio}</p>
                     <div class="btn-row">
-                        <button class="copy-btn" onclick="copyInfo('${safeName}','${safeBio}')">Copy Info</button>
+                        <button class="copy-btn" onclick="copyInfo(this,'${safeName}','${safeBio}')">Copy Info</button>
                         <a class="read-more-btn" href="${wikiURL}" target="_blank" rel="noopener">
                             Read More
                             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
@@ -635,8 +664,8 @@ SELECT DISTINCT ?p ?name ?wikipedia ?description WHERE {
     ?p rdfs:label ?name .
     FILTER(LANG(?name) = "en")
 }
-ORDER BY RAND()
-LIMIT 60`.trim();
+LIMIT 60
+OFFSET ${Math.floor(Math.random() * 600)}`.trim();
 }
 
 const seenIds = { scientist: new Set(), artist: new Set(), politician: new Set() };
@@ -646,11 +675,11 @@ function markSeen(cat, approved) {
 }
 
 function filterUnseen(cat, items) {
-    const unseen = items.filter(i => !seenIds[cat].has(i.p.value));
-    
+    const shuffled = items.sort(() => Math.random() - 0.5);
+    const unseen = shuffled.filter(i => !seenIds[cat].has(i.p.value));
     if (unseen.length < 12) {
         seenIds[cat].clear();
-        return items;
+        return shuffled;
     }
     return unseen;
 }
@@ -742,11 +771,11 @@ async function loadCategory(cat) {
                     <img src="${imgSrc}" class="portrait" alt="${name}" loading="lazy">
                 </div>
                 <div class="card-body">
-                    <span class="category-label">✦ ${cfg.label}</span>
+                    <span class="category-label">${cfg.label}</span>
                     <h2 class="name">${name}</h2>
                     <p class="bio">${bio}</p>
                     <div class="btn-row">
-                        <button class="copy-btn" onclick="copyInfo('${safeName}','${safeBio}')">Copy Info</button>
+                        <button class="copy-btn" onclick="copyInfo(this,'${safeName}','${safeBio}')">Copy Info</button>
                         <a class="read-more-btn" href="${wikiURL}" target="_blank" rel="noopener">
                             Read More
                             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
@@ -772,17 +801,25 @@ async function loadCategory(cat) {
     isLoading = false;
 }
 
-function copyInfo(name, bio) {
+function copyInfo(btn, name, bio) {
     navigator.clipboard.writeText(`${name}\n\n${bio}`)
         .then(() => {
-            const btn = event.target;
             btn.textContent = '✓ Copied!';
-            setTimeout(() => btn.textContent = 'Copy Info', 2000);
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.textContent = 'Copy Info';
+                btn.classList.remove('copied');
+            }, 2000);
         });
 }
 
 window.onload = () => loadCategory('scientist');
 </script>
+<footer>
+    <p class="footer-attr">Data and images sourced via <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a> and <a href="https://www.wikipedia.org" target="_blank" rel="noopener">Wikipedia</a> under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">Creative Commons licenses (CC BY-SA 4.0)</a>. Wikidata content is also available under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener">CC0</a>.</p>
+    <p class="footer-made">Made with 💜 in honour of National Women's Month</p>
+</footer>
+
 </body>
 </html>
 
