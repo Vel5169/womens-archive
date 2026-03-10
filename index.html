@@ -399,7 +399,9 @@ async function triggerDeepSearch() {
     status.textContent = `SEARCHING FULL ARCHIVE FOR "${query.toUpperCase()}"…`;
     banner.classList.remove('visible');
 
-    const sparql = `
+const isName = query.split(' ').length >= 2 || /^[A-Z]/.test(query);
+
+const sparql = isName ? `
 SELECT DISTINCT ?p ?name ?wikipedia ?description WHERE {
     SERVICE wikibase:mwapi {
         bd:serviceParam wikibase:api "EntitySearch" ;
@@ -418,6 +420,19 @@ SELECT DISTINCT ?p ?name ?wikipedia ?description WHERE {
     ?wikipedia schema:about ?p ;
                schema:isPartOf <https://en.wikipedia.org/> .
 }
+LIMIT 30`.trim() : `
+SELECT DISTINCT ?p ?name ?wikipedia ?description WHERE {
+    ?p wdt:P31 wd:Q5 ;
+       wdt:P21 wd:Q6581072 .
+    ?p rdfs:label ?name .
+    FILTER(LANG(?name) = "en")
+    ?p schema:description ?description .
+    FILTER(LANG(?description) = "en")
+    FILTER(CONTAINS(LCASE(?description), "${query.toLowerCase()}"))
+    ?wikipedia schema:about ?p ;
+               schema:isPartOf <https://en.wikipedia.org/> .
+}
+ORDER BY RAND()
 LIMIT 30`.trim();
 
     try {
@@ -822,5 +837,6 @@ window.onload = () => loadCategory('scientist');
 
 </body>
 </html>
+
 
 
